@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsSection.style.display = 'block';
   }
 
-  // Calculate individual subject grade
+  // Calculate individual subject grade (PRECISE calculation)
   function calculateSubjectGrade(subject) {
     const assessment = safeFloat(subject.assessment);
     const final = safeFloat(subject.final);
@@ -186,23 +186,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let total, maxMarks, percentage;
 
-    // Determine subject type based on max marks
+    // Determine calculation based on subject structure from curriculum
     if (subject.finalMax > 0) {
       // Theory subject (has final exam)
       total = assessment + final + practical;
       maxMarks = subject.assessmentMax + subject.finalMax + subject.practicalMax;
     } else {
-      // Practical/Project only
+      // Practical/Project only (no final exam)
       total = practical;
       maxMarks = subject.practicalMax;
     }
 
+    // Precise percentage calculation
     percentage = maxMarks > 0 ? (total / maxMarks) * 100 : 0;
     const grade = getGrade(percentage);
 
-    subject.total = total;
+    // Update subject object
+    subject.total = Math.round(total * 100) / 100; // Round to 2 decimal places
     subject.maxMarks = maxMarks;
-    subject.percentage = percentage;
+    subject.percentage = Math.round(percentage * 100) / 100; // Round to 2 decimal places
     subject.grade = grade.letter;
     subject.point = grade.point;
   }
@@ -457,59 +459,94 @@ document.addEventListener('DOMContentLoaded', () => {
     subjects.forEach((sub, idx) => {
       const row = document.createElement('tr');
       
-      // For programs with curriculum, show editable inputs for marks
-      let assessmentDisplay, finalDisplay;
+      // Build input fields based on subject structure
+      let assessmentDisplay, finalDisplay, practicalDisplay;
       
       if (hasCurriculum) {
-        // Show max marks and make editable
+        // For subjects with final exam (theory subjects)
         if (sub.finalMax > 0) {
-          // Theory subject - has assessment and final
-          assessmentDisplay = `<input type="number" class="subject-input marks-input" 
-            data-index="${idx}" data-field="assessment" 
-            min="0" max="${sub.assessmentMax}" 
-            value="${sub.assessment || 0}" 
-            placeholder="0" />`;
+          // Assessment input
+          assessmentDisplay = `
+            <input type="number" class="subject-input marks-input" 
+              data-index="${idx}" data-field="assessment" 
+              min="0" max="${sub.assessmentMax}" 
+              value="${sub.assessment || 0}" 
+              placeholder="0" />
+            <br><small style="color: var(--text-tertiary)">Max ${sub.assessmentMax}</small>
+          `;
           
-          finalDisplay = `<input type="number" class="subject-input marks-input" 
-            data-index="${idx}" data-field="final" 
-            min="0" max="${sub.finalMax}" 
-            value="${sub.final || 0}" 
-            placeholder="0" />`;
+          // Final input
+          finalDisplay = `
+            <input type="number" class="subject-input marks-input" 
+              data-index="${idx}" data-field="final" 
+              min="0" max="${sub.finalMax}" 
+              value="${sub.final || 0}" 
+              placeholder="0" />
+            <br><small style="color: var(--text-tertiary)">Max ${sub.finalMax}</small>
+          `;
+          
+          // Practical input (if subject has practical)
+          if (sub.practicalMax > 0) {
+            practicalDisplay = `
+              <input type="number" class="subject-input marks-input" 
+                data-index="${idx}" data-field="practicalMarks" 
+                min="0" max="${sub.practicalMax}" 
+                value="${sub.practicalMarks || 0}" 
+                placeholder="0" />
+              <br><small style="color: var(--text-tertiary)">Max ${sub.practicalMax}</small>
+            `;
+          } else {
+            practicalDisplay = '<span style="color: var(--text-tertiary)">-</span>';
+          }
         } else {
-          // Project/Workshop - practical only
-          assessmentDisplay = `<input type="number" class="subject-input marks-input" 
-            data-index="${idx}" data-field="practicalMarks" 
-            min="0" max="${sub.practicalMax}" 
-            value="${sub.practicalMarks || 0}" 
-            placeholder="0" />`;
-          
-          finalDisplay = '-';
+          // Project/Workshop subjects (practical only, no final exam)
+          assessmentDisplay = `
+            <input type="number" class="subject-input marks-input" 
+              data-index="${idx}" data-field="practicalMarks" 
+              min="0" max="${sub.practicalMax}" 
+              value="${sub.practicalMarks || 0}" 
+              placeholder="0" />
+            <br><small style="color: var(--text-tertiary)">Max ${sub.practicalMax}</small>
+          `;
+          finalDisplay = '<span style="color: var(--text-tertiary)">-</span>';
+          practicalDisplay = '<span style="color: var(--text-tertiary)">-</span>';
         }
       } else {
-        // For other programs, show static values
+        // Fallback for non-curriculum programs
         assessmentDisplay = sub.assessment || 0;
         finalDisplay = sub.final || '-';
+        practicalDisplay = sub.practicalMarks || '-';
+      }
+
+      // Determine subject type badge
+      let typeBadge = '';
+      if (sub.finalMax > 0 && sub.practicalMax > 0) {
+        typeBadge = '<span class="subject-type-badge badge-theory">Theory + PR</span>';
+      } else if (sub.finalMax > 0) {
+        typeBadge = '<span class="subject-type-badge badge-theory">Theory</span>';
+      } else {
+        typeBadge = '<span class="subject-type-badge badge-practical">Practical</span>';
       }
 
       row.innerHTML = `
-        <td><strong>${sub.name}</strong><br><small style="color: var(--text-tertiary)">${sub.code || ''}</small></td>
         <td>
-          ${sub.finalMax > 0 ? 
-            '<span class="subject-type-badge badge-theory">Theory</span>' : 
-            '<span class="subject-type-badge badge-practical">PR</span>'}
-          ${hasCurriculum && sub.practicalMax > 0 && sub.finalMax > 0 ? 
-            '<span class="subject-type-badge badge-practical" style="margin-left: 4px;">+PR</span>' : ''}
+          <strong>${sub.name}</strong>
+          <br><small style="color: var(--text-tertiary)">${sub.code || ''}</small>
         </td>
+        <td>${typeBadge}</td>
         <td class="credit-col">${sub.credit}</td>
-        <td class="marks-col">${assessmentDisplay}<br><small style="color: var(--text-tertiary)">Max ${sub.finalMax > 0 ? sub.assessmentMax : sub.practicalMax}</small></td>
-        <td class="marks-col">${finalDisplay}${sub.finalMax > 0 ? '<br><small style="color: var(--text-tertiary)">Max ' + sub.finalMax + '</small>' : ''}</td>
+        <td class="marks-col">${assessmentDisplay}</td>
+        <td class="marks-col">${finalDisplay}</td>
+        <td class="marks-col">${practicalDisplay}</td>
         <td class="grade-col">
           <span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span>
         </td>
         <td class="action-col">
-          ${!hasCurriculum ? `<button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
-            <i class="fas fa-trash"></i>
-          </button>` : ''}
+          ${!hasCurriculum ? `
+            <button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          ` : ''}
         </td>
       `;
 
