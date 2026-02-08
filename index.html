@@ -50,6 +50,12 @@
                 required
               />
             </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="hasPractical" />
+                <span>Has Practical?</span>
+              </label>
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label for="creditHours">Credit Hours</label>
@@ -64,7 +70,7 @@
                 />
               </div>
               <div class="form-group">
-                <label for="internalMarks">Internal (40)</label>
+                <label for="internalMarks">Theory Internal (40)</label>
                 <input
                   type="number"
                   id="internalMarks"
@@ -76,7 +82,7 @@
                 />
               </div>
               <div class="form-group">
-                <label for="finalMarks">Final (60)</label>
+                <label for="finalMarks">Theory Final (60)</label>
                 <input
                   type="number"
                   id="finalMarks"
@@ -85,6 +91,30 @@
                   step="1"
                   placeholder="Max 60"
                   required
+                />
+              </div>
+            </div>
+            <div class="form-row practical-fields" id="practicalFields" style="display: none;">
+              <div class="form-group">
+                <label for="practicalInternal">Practical Internal (20)</label>
+                <input
+                  type="number"
+                  id="practicalInternal"
+                  min="0"
+                  max="20"
+                  step="1"
+                  placeholder="Max 20"
+                />
+              </div>
+              <div class="form-group">
+                <label for="practicalFinal">Practical Final (30)</label>
+                <input
+                  type="number"
+                  id="practicalFinal"
+                  min="0"
+                  max="30"
+                  step="1"
+                  placeholder="Max 30"
                 />
               </div>
             </div>
@@ -118,8 +148,10 @@
                 <tr>
                   <th>Subject</th>
                   <th>Credit</th>
-                  <th>Int.</th>
-                  <th>Final</th>
+                  <th>Theory Int.</th>
+                  <th>Theory Final</th>
+                  <th>Prac. Int.</th>
+                  <th>Prac. Final</th>
                   <th>Total</th>
                   <th>Grade</th>
                   <th>Point</th>
