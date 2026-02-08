@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IOE Grade Calculator </title>
+    <title>IOE Grade Calculator</title>
     <meta
       name="description"
       content="Calculate your IOE Semester Grade Point Average (SGPA) and Percentage easily. Accurate grading system for IOE engineering students."
@@ -26,149 +26,126 @@
     <script src="script.js" defer></script>
   </head>
   <body>
-    <div class="background-animation"></div>
-    <main class="container">
-      <header>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
         <h1>IOE Grade Calculator</h1>
-        <p>
-          Calculate your Semester Grade Point Average (SGPA) based on IOE
-          Grading System.
-        </p>
+        <p>Calculate your Semester GPA for IOE Engineering Programs</p>
       </header>
 
-      <div class="calculator-wrapper">
-        <!-- Input Form -->
-        <section class="input-section glass-panel">
-          <h2>Add Subject</h2>
-          <form id="subjectForm">
-            <div class="form-group">
-              <label for="subjectName">Subject Name</label>
-              <input
-                type="text"
-                id="subjectName"
-                placeholder="e.g. Applied Math"
-                required
-              />
-            </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="hasPractical" />
-                <span>Has Practical?</span>
-              </label>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="creditHours">Credit Hours</label>
-                <input
-                  type="number"
-                  id="creditHours"
-                  min="1"
-                  max="10"
-                  step="0.5"
-                  placeholder="3"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="internalMarks">Internal (40)</label>
-                <input
-                  type="number"
-                  id="internalMarks"
-                  min="0"
-                  max="40"
-                  step="1"
-                  placeholder="Max 40"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="finalMarks">Final Theory (60)</label>
-                <input
-                  type="number"
-                  id="finalMarks"
-                  min="0"
-                  max="60"
-                  step="1"
-                  placeholder="Max 60"
-                  required
-                />
-              </div>
-            </div>
-            <div class="practical-fields" id="practicalFields" style="display: none;">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="practicalMaxMarks">Practical Max Marks</label>
-                  <select id="practicalMaxMarks" required>
-                    <option value="">Select Max</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="practicalMarks">Practical Final</label>
-                  <input
-                    type="number"
-                    id="practicalMarks"
-                    min="0"
-                    step="1"
-                    placeholder="Enter marks"
-                  />
-                </div>
-              </div>
-            </div>
-            <button type="submit" class="btn-add">
-              <i class="fas fa-plus"></i> Add Subject
-            </button>
-            <div id="formError" class="error-message" aria-live="polite"></div>
-          </form>
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Row 1: Program Selection -->
+        <section class="selection-row">
+          <div class="row-label">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Select Program</span>
+          </div>
+          <div class="row-content">
+            <select id="programSelect" class="modern-select">
+              <option value="">Choose BE Program</option>
+              <option value="BECE">Computer Engineering (BECE)</option>
+              <option value="BEI">Electronics, Communication & Information Engineering (BEI)</option>
+              <option value="BEE">Electronics Engineering (BEE)</option>
+              <option value="CIVIL">Civil Engineering</option>
+              <option value="MECH">Mechanical Engineering</option>
+              <option value="ARCH" data-semesters="10">Architecture (10 semesters)</option>
+            </select>
+          </div>
         </section>
 
-        <!-- Results & List -->
-        <section class="results-section glass-panel">
-          <div class="score-card" aria-live="polite">
-            <div class="score-item">
-              <span class="label">Total Credits</span>
-              <span class="value" id="totalCredits">0</span>
+        <!-- Row 2: Semester Selection -->
+        <section class="selection-row" id="semesterRow" style="display: none;">
+          <div class="row-label">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Select Semester</span>
+          </div>
+          <div class="row-content">
+            <select id="semesterSelect" class="modern-select">
+              <option value="">Choose Semester</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Row 3: Subject Management -->
+        <section class="subjects-section" id="subjectsSection" style="display: none;">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-book"></i>
+              Add Subjects
+            </h2>
+            <button id="addSubjectBtn" class="btn-add-subject">
+              <i class="fas fa-plus"></i>
+              Add Subject
+            </button>
+          </div>
+
+          <div id="subjectsList" class="subjects-list">
+            <!-- Subjects will be added here dynamically -->
+          </div>
+
+          <div id="emptySubjects" class="empty-state">
+            <i class="fas fa-book-open"></i>
+            <p>No subjects added yet. Click "Add Subject" to begin.</p>
+          </div>
+        </section>
+
+        <!-- Row 4: Results -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-chart-line"></i>
+              Grade Sheet
+            </h2>
+            <button id="calculateBtn" class="btn-calculate">
+              <i class="fas fa-calculator"></i>
+              Calculate Grades
+            </button>
+          </div>
+
+          <!-- Score Cards -->
+          <div class="score-cards">
+            <div class="score-card">
+              <div class="score-label">Total Credits</div>
+              <div class="score-value" id="totalCredits">0</div>
             </div>
-            <div class="score-item highlight">
-              <span class="label">SGPA</span>
-              <span class="value" id="sgpa">0.00</span>
+            <div class="score-card highlight">
+              <div class="score-label">SGPA</div>
+              <div class="score-value" id="sgpa">0.00</div>
             </div>
-            <div class="score-item">
-              <span class="label">Percentage</span>
-              <span class="value" id="totalPercentage">0%</span>
+            <div class="score-card">
+              <div class="score-label">Percentage</div>
+              <div class="score-value" id="percentage">0%</div>
             </div>
           </div>
 
-          <div class="table-container">
-            <table id="gradeTable">
+          <!-- Grade Table -->
+          <div class="table-wrapper">
+            <table class="grade-table" id="gradeTable">
               <thead>
                 <tr>
                   <th>Subject</th>
                   <th>Credit</th>
                   <th>Internal</th>
-                  <th>Final Theory</th>
+                  <th>Final</th>
                   <th>Practical</th>
                   <th>Total</th>
                   <th>Grade</th>
                   <th>Point</th>
-                  <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
-                <!-- Rows will be added here dynamically -->
+              <tbody id="gradeTableBody">
+                <!-- Rows added dynamically -->
               </tbody>
             </table>
-            <div id="emptyState" class="empty-state">
-              <p>No subjects added yet. Start by adding one above!</p>
-            </div>
           </div>
         </section>
-      </div>
-    </main>
-    <footer class="footer">
-      <p>Made by <a href="https://yogeshnyaupane.com.np/" target="_blank" rel="noopener noreferrer"><strong>Yogesh Nyaupane</strong></a> · NCEO80BEI048</p>
-    </footer>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Made by <a href="https://yogeshnyaupane.com.np/" target="_blank" rel="noopener noreferrer"><strong>Yogesh Nyaupane</strong></a> · NCEO80BEI048</p>
+      </footer>
+    </div>
   </body>
 </html>
