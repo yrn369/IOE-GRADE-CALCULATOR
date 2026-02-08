@@ -70,7 +70,7 @@
                 />
               </div>
               <div class="form-group">
-                <label for="internalMarks">Theory Internal (40)</label>
+                <label for="internalMarks">Internal (40)</label>
                 <input
                   type="number"
                   id="internalMarks"
@@ -82,7 +82,7 @@
                 />
               </div>
               <div class="form-group">
-                <label for="finalMarks">Theory Final (60)</label>
+                <label for="finalMarks">Final Theory (60)</label>
                 <input
                   type="number"
                   id="finalMarks"
@@ -94,28 +94,27 @@
                 />
               </div>
             </div>
-            <div class="form-row practical-fields" id="practicalFields" style="display: none;">
-              <div class="form-group">
-                <label for="practicalInternal">Practical Internal (20)</label>
-                <input
-                  type="number"
-                  id="practicalInternal"
-                  min="0"
-                  max="20"
-                  step="1"
-                  placeholder="Max 20"
-                />
-              </div>
-              <div class="form-group">
-                <label for="practicalFinal">Practical Final (30)</label>
-                <input
-                  type="number"
-                  id="practicalFinal"
-                  min="0"
-                  max="30"
-                  step="1"
-                  placeholder="Max 30"
-                />
+            <div class="practical-fields" id="practicalFields" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="practicalMaxMarks">Practical Max Marks</label>
+                  <select id="practicalMaxMarks" required>
+                    <option value="">Select Max</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="practicalMarks">Practical Final</label>
+                  <input
+                    type="number"
+                    id="practicalMarks"
+                    min="0"
+                    step="1"
+                    placeholder="Enter marks"
+                  />
+                </div>
               </div>
             </div>
             <button type="submit" class="btn-add">
@@ -148,10 +147,9 @@
                 <tr>
                   <th>Subject</th>
                   <th>Credit</th>
-                  <th>Theory Int.</th>
-                  <th>Theory Final</th>
-                  <th>Prac. Int.</th>
-                  <th>Prac. Final</th>
+                  <th>Internal</th>
+                  <th>Final Theory</th>
+                  <th>Practical</th>
                   <th>Total</th>
                   <th>Grade</th>
                   <th>Point</th>

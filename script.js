@@ -10,8 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const finalMarksInput = document.getElementById("finalMarks");
   const hasPracticalCheckbox = document.getElementById("hasPractical");
   const practicalFields = document.getElementById("practicalFields");
-  const practicalInternalInput = document.getElementById("practicalInternal");
-  const practicalFinalInput = document.getElementById("practicalFinal");
+  const practicalMaxMarksSelect = document.getElementById("practicalMaxMarks");
+  const practicalMarksInput = document.getElementById("practicalMarks");
   const formError = document.getElementById("formError");
   const gradeTableBody = document.querySelector("#gradeTable tbody");
   const totalCreditsEl = document.getElementById("totalCredits");
@@ -23,15 +23,25 @@ document.addEventListener("DOMContentLoaded", () => {
   // Toggle Practical Fields
   hasPracticalCheckbox.addEventListener("change", () => {
     if (hasPracticalCheckbox.checked) {
-      practicalFields.style.display = "grid";
-      practicalInternalInput.required = true;
-      practicalFinalInput.required = true;
+      practicalFields.style.display = "block";
+      practicalMaxMarksSelect.required = true;
+      practicalMarksInput.required = true;
     } else {
       practicalFields.style.display = "none";
-      practicalInternalInput.required = false;
-      practicalFinalInput.required = false;
-      practicalInternalInput.value = "";
-      practicalFinalInput.value = "";
+      practicalMaxMarksSelect.required = false;
+      practicalMarksInput.required = false;
+      practicalMaxMarksSelect.value = "";
+      practicalMarksInput.value = "";
+      practicalMarksInput.max = "";
+    }
+  });
+
+  // Update practical marks max based on selection
+  practicalMaxMarksSelect.addEventListener("change", () => {
+    const maxMarks = practicalMaxMarksSelect.value;
+    if (maxMarks) {
+      practicalMarksInput.max = maxMarks;
+      practicalMarksInput.placeholder = `Max ${maxMarks}`;
     }
   });
 
@@ -46,15 +56,17 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Helper: Validations
-  const validateInputs = (subject, credit, internal, final, hasPractical, practicalInt, practicalFin) => {
+  const validateInputs = (subject, credit, internal, final, hasPractical, practicalMarks, practicalMax) => {
     if (!subject.trim()) return "Subject Name is required.";
     if (credit < 0.5 || credit > 10) return "Invalid Credit Hours.";
     if (internal < 0 || internal > 40) return "Internal marks must be 0-40.";
     if (final < 0 || final > 60) return "Final marks must be 0-60.";
     
     if (hasPractical) {
-      if (practicalInt < 0 || practicalInt > 20) return "Practical Internal marks must be 0-20.";
-      if (practicalFin < 0 || practicalFin > 30) return "Practical Final marks must be 0-30.";
+      if (!practicalMax) return "Please select Practical Max Marks.";
+      if (practicalMarks < 0 || practicalMarks > practicalMax) {
+        return `Practical marks must be 0-${practicalMax}.`;
+      }
     }
     
     return null;
@@ -74,11 +86,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const internal = parseFloat(internalMarksInput.value);
     const final = parseFloat(finalMarksInput.value);
     const hasPractical = hasPracticalCheckbox.checked;
-    const practicalInt = hasPractical ? parseFloat(practicalInternalInput.value) || 0 : 0;
-    const practicalFin = hasPractical ? parseFloat(practicalFinalInput.value) || 0 : 0;
+    const practicalMax = hasPractical ? parseInt(practicalMaxMarksSelect.value, 10) : 0;
+    const practicalMarks = hasPractical ? parseFloat(practicalMarksInput.value) || 0 : 0;
 
     // Validation
-    const error = validateInputs(subject, credit, internal, final, hasPractical, practicalInt, practicalFin);
+    const error = validateInputs(subject, credit, internal, final, hasPractical, practicalMarks, practicalMax);
     if (error) {
       formError.textContent = error;
       return;
@@ -86,12 +98,11 @@ document.addEventListener("DOMContentLoaded", () => {
     formError.textContent = ""; // Clear error
 
     // Calculation
-    const theoryMarks = internal + final;
-    const practicalMarks = practicalInt + practicalFin;
+    const theoryMarks = internal + final; // Max 100
     const totalMarks = theoryMarks + practicalMarks;
     
     // Calculate percentage based on whether subject has practical
-    const maxMarks = hasPractical ? 150 : 100; // Theory (100) + Practical (50) OR just Theory (100)
+    const maxMarks = 100 + practicalMax; // 100 (theory) + practical max (0/25/50/100)
     const percentage = (totalMarks / maxMarks) * 100;
     
     const gradeInfo = getGrade(percentage);
@@ -103,11 +114,11 @@ document.addEventListener("DOMContentLoaded", () => {
       internal,
       final,
       hasPractical,
-      practicalInternal: practicalInt,
-      practicalFinal: practicalFin,
-      theoryMarks,
       practicalMarks,
+      practicalMax,
+      theoryMarks,
       totalMarks,
+      maxMarks,
       percentage,
       grade: gradeInfo.letter,
       point: gradeInfo.point,
@@ -120,8 +131,9 @@ document.addEventListener("DOMContentLoaded", () => {
     form.reset();
     hasPracticalCheckbox.checked = false;
     practicalFields.style.display = "none";
-    practicalInternalInput.required = false;
-    practicalFinalInput.required = false;
+    practicalMaxMarksSelect.required = false;
+    practicalMarksInput.required = false;
+    practicalMarksInput.max = "";
     subjectNameInput.focus();
   });
 
@@ -161,17 +173,16 @@ document.addEventListener("DOMContentLoaded", () => {
     subjects.forEach((sub) => {
       const row = document.createElement("tr");
       
-      // Determine max marks for display
-      const maxMarks = sub.hasPractical ? 150 : 100;
+      // Display practical marks with max or '-' if no practical
+      const practicalDisplay = sub.hasPractical ? `${sub.practicalMarks}/${sub.practicalMax}` : '-';
       
       row.innerHTML = `
                 <td>${sub.name}</td>
                 <td>${sub.credit}</td>
                 <td>${sub.internal}</td>
                 <td>${sub.final}</td>
-                <td>${sub.hasPractical ? sub.practicalInternal : '-'}</td>
-                <td>${sub.hasPractical ? sub.practicalFinal : '-'}</td>
-                <td>${sub.totalMarks}/${maxMarks}</td>
+                <td>${practicalDisplay}</td>
+                <td>${sub.totalMarks}/${sub.maxMarks}</td>
                 <td><span class="grade-badge grade-${sub.grade.replace("+", "")}">${sub.grade}</span></td>
                 <td>${sub.point}</td>
                 <td>
