@@ -3,56 +3,78 @@ document.addEventListener('DOMContentLoaded', () => {
   let subjects = [];
   let currentProgram = '';
   let currentSemester = '';
-  let subjectCounter = 0;
 
   // DOM Elements
   const programSelect = document.getElementById('programSelect');
-  const semesterRow = document.getElementById('semesterRow');
+  const semesterCard = document.getElementById('semesterCard');
   const semesterSelect = document.getElementById('semesterSelect');
   const subjectsSection = document.getElementById('subjectsSection');
-  const subjectsList = document.getElementById('subjectsList');
-  const emptySubjects = document.getElementById('emptySubjects');
-  const addSubjectBtn = document.getElementById('addSubjectBtn');
+  const addTheoryPairBtn = document.getElementById('addTheoryPairBtn');
+  const addSingleBtn = document.getElementById('addSingleBtn');
+  const subjectsTableBody = document.getElementById('subjectsTableBody');
+  const emptyState = document.getElementById('emptyState');
   const resultsSection = document.getElementById('resultsSection');
-  const calculateBtn = document.getElementById('calculateBtn');
-  const gradeTableBody = document.getElementById('gradeTableBody');
   const totalCreditsEl = document.getElementById('totalCredits');
   const sgpaEl = document.getElementById('sgpa');
+  const sgpaGradeEl = document.getElementById('sgpaGrade');
   const percentageEl = document.getElementById('percentage');
+  const distributionBarsEl = document.getElementById('distributionBars');
+  
+  // Modal Elements
+  const modal = document.getElementById('subjectModal');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalClose = document.getElementById('modalClose');
+  const modalTitle = document.getElementById('modalTitle');
+  const subjectForm = document.getElementById('subjectForm');
+  const subjectNameInput = document.getElementById('subjectName');
+  const subjectTypeSelect = document.getElementById('subjectType');
+  const creditHoursInput = document.getElementById('creditHours');
+  const theoryFields = document.getElementById('theoryFields');
+  const practicalFields = document.getElementById('practicalFields');
+  const assessmentInput = document.getElementById('assessment');
+  const finalInput = document.getElementById('final');
+  const practicalMaxSelect = document.getElementById('practicalMax');
+  const practicalMarksInput = document.getElementById('practicalMarks');
+  const theoryPreview = document.getElementById('theoryPreview');
+  const practicalPreview = document.getElementById('practicalPreview');
+  const practicalHint = document.getElementById('practicalHint');
+  const cancelBtn = document.getElementById('cancelBtn');
 
-  // IOE Grading System
+  let isPairMode = false;
+  let pairSubject = null;
+
+  // IOE Grading System (Verified from marksheets)
   const getGrade = (percentage) => {
-    if (percentage >= 90) return { letter: 'A', point: 4.0 };
-    if (percentage >= 80) return { letter: 'A-', point: 3.7 };
-    if (percentage >= 70) return { letter: 'B+', point: 3.3 };
-    if (percentage >= 60) return { letter: 'B', point: 3.0 };
-    if (percentage >= 50) return { letter: 'B-', point: 2.7 };
-    if (percentage >= 40) return { letter: 'C+', point: 2.4 };
-    if (percentage >= 35) return { letter: 'C', point: 2.0 };
+    const p = parseFloat(percentage) || 0;
+    if (p >= 90) return { letter: 'A', point: 4.0 };
+    if (p >= 80) return { letter: 'A-', point: 3.7 };
+    if (p >= 70) return { letter: 'B+', point: 3.3 };
+    if (p >= 60) return { letter: 'B', point: 3.0 };
+    if (p >= 50) return { letter: 'B-', point: 2.7 };
+    if (p >= 40) return { letter: 'C+', point: 2.4 };
+    if (p >= 35) return { letter: 'C', point: 2.0 };
     return { letter: 'F', point: 0.0 };
   };
 
-  // Subject Type Handler
-  const getSubjectType = () => {
-    return {
-      THEORY: 'theory',
-      PRACTICAL: 'practical',
-      THEORY_WITH_PRACTICAL: 'theory_with_practical'
-    };
+  // Safe number parsing
+  const safeFloat = (value, defaultValue = 0) => {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) || !isFinite(parsed) ? defaultValue : parsed;
   };
 
-  const SUBJECT_TYPES = getSubjectType();
+  const safeInt = (value, defaultValue = 0) => {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) || !isFinite(parsed) ? defaultValue : parsed;
+  };
 
-  // Program Selection Handler
+  // Program Selection
   programSelect.addEventListener('change', (e) => {
     currentProgram = e.target.value;
     
     if (currentProgram) {
-      // Show semester row
-      semesterRow.style.display = 'flex';
+      semesterCard.style.display = 'block';
       
-      // Populate semesters
-      const maxSemesters = e.target.selectedOptions[0].dataset.semesters || 8;
+      const maxSemesters = e.target.selectedOptions[0]?.dataset.semesters || 8;
       semesterSelect.innerHTML = '<option value="">Choose Semester</option>';
       
       for (let i = 1; i <= maxSemesters; i++) {
@@ -62,33 +84,30 @@ document.addEventListener('DOMContentLoaded', () => {
         semesterSelect.appendChild(option);
       }
       
-      // Reset semester selection
       currentSemester = '';
       subjectsSection.style.display = 'none';
       resultsSection.style.display = 'none';
       subjects = [];
-      subjectsList.innerHTML = '';
+      renderTable();
     } else {
-      semesterRow.style.display = 'none';
+      semesterCard.style.display = 'none';
       subjectsSection.style.display = 'none';
       resultsSection.style.display = 'none';
     }
   });
 
-  // Semester Selection Handler
+  // Semester Selection
   semesterSelect.addEventListener('change', (e) => {
     currentSemester = e.target.value;
     
     if (currentSemester) {
       subjectsSection.style.display = 'block';
-      
-      // Load saved subjects from localStorage
       loadSubjects();
       
       if (subjects.length > 0) {
-        renderSubjects();
+        renderTable();
+        calculateResults();
         resultsSection.style.display = 'block';
-        calculateGrades();
       }
     } else {
       subjectsSection.style.display = 'none';
@@ -96,430 +115,367 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Add Subject Button
-  addSubjectBtn.addEventListener('click', () => {
-    subjectCounter++;
-    const subjectCard = createSubjectCard(subjectCounter);
-    subjectsList.appendChild(subjectCard);
-    emptySubjects.style.display = 'none';
-    resultsSection.style.display = 'block';
+  // Quick Add Theory + PR Pair
+  addTheoryPairBtn.addEventListener('click', () => {
+    isPairMode = true;
+    pairSubject = null;
+    openModal('Add Theory Subject');
+    subjectTypeSelect.value = 'theory';
+    subjectTypeSelect.disabled = true;
+    toggleFieldsByType('theory');
   });
 
-  // Create Subject Card
-  function createSubjectCard(id, data = null) {
-    const card = document.createElement('div');
-    card.className = 'subject-card';
-    card.dataset.id = id;
+  // Add Single Subject
+  addSingleBtn.addEventListener('click', () => {
+    isPairMode = false;
+    pairSubject = null;
+    openModal('Add Subject');
+    subjectTypeSelect.disabled = false;
+  });
 
-    const subjectType = data?.subjectType || 'theory';
+  // Subject Type Change
+  subjectTypeSelect.addEventListener('change', (e) => {
+    toggleFieldsByType(e.target.value);
+  });
 
-    card.innerHTML = `
-      <div class="subject-card-header">
-        <span class="subject-number">Subject ${id}</span>
-        <button class="btn-remove" onclick="removeSubject(${id})">
-          <i class="fas fa-trash"></i> Remove
-        </button>
+  // Toggle Fields Based on Type
+  function toggleFieldsByType(type) {
+    if (type === 'theory') {
+      theoryFields.style.display = 'block';
+      practicalFields.style.display = 'none';
+      assessmentInput.required = true;
+      finalInput.required = true;
+      practicalMaxSelect.required = false;
+      practicalMarksInput.required = false;
+    } else {
+      theoryFields.style.display = 'none';
+      practicalFields.style.display = 'block';
+      assessmentInput.required = false;
+      finalInput.required = false;
+      practicalMaxSelect.required = true;
+      practicalMarksInput.required = true;
+    }
+  }
+
+  // Practical Max Change
+  practicalMaxSelect.addEventListener('change', (e) => {
+    const max = safeInt(e.target.value);
+    if (max > 0) {
+      practicalMarksInput.max = max;
+      practicalHint.textContent = `0-${max}`;
+    } else {
+      practicalHint.textContent = 'Select max first';
+    }
+    updatePracticalPreview();
+  });
+
+  // Real-time Preview Updates
+  assessmentInput.addEventListener('input', updateTheoryPreview);
+  finalInput.addEventListener('input', updateTheoryPreview);
+  practicalMarksInput.addEventListener('input', updatePracticalPreview);
+
+  function updateTheoryPreview() {
+    const assessment = safeFloat(assessmentInput.value);
+    const final = safeFloat(finalInput.value);
+    const total = assessment + final;
+    const percentage = total;
+    const grade = getGrade(percentage);
+
+    theoryPreview.innerHTML = `
+      <div class="preview-label">Preview</div>
+      <div class="preview-grade">
+        <span class="preview-marks">${total}/100 (${percentage.toFixed(1)}%)</span>
+        <span class="grade-badge grade-${grade.letter.replace('+', '')}">${grade.letter}</span>
       </div>
-      <form class="subject-form">
-        <div class="form-group">
-          <label>Subject Name</label>
-          <input type="text" class="subject-name" placeholder="e.g., Applied Mathematics" value="${data?.name || ''}" required>
-        </div>
-        <div class="form-group">
-          <label>Subject Type</label>
-          <select class="subject-type" required>
-            <option value="theory" ${subjectType === 'theory' ? 'selected' : ''}>Theory Only</option>
-            <option value="practical" ${subjectType === 'practical' ? 'selected' : ''}>Practical Only</option>
-            <option value="theory_with_practical" ${subjectType === 'theory_with_practical' ? 'selected' : ''}>Theory + Practical</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Credit Hours</label>
-          <input type="number" class="credit-hours" min="0.5" max="10" step="0.5" value="${data?.credit || ''}" placeholder="3" required>
-        </div>
-        
-        <div class="marks-row theory-marks" style="display: ${subjectType !== 'practical' ? 'grid' : 'none'};">
-          <div class="form-group">
-            <label>Assessment/Internal (Max 40)</label>
-            <input type="number" class="internal-marks" min="0" max="40" value="${data?.internal || ''}" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label>Final Theory (Max 60)</label>
-            <input type="number" class="final-marks" min="0" max="60" value="${data?.final || ''}" placeholder="0">
-          </div>
-        </div>
-        
-        <div class="practical-marks-only" style="display: ${subjectType === 'practical' ? 'grid' : 'none'};">
-          <div class="form-group">
-            <label>Practical Max Marks</label>
-            <select class="practical-max-solo" required>
-              <option value="">Select Max</option>
-              <option value="25" ${data?.practicalMax === 25 ? 'selected' : ''}>25</option>
-              <option value="50" ${data?.practicalMax === 50 ? 'selected' : ''}>50</option>
-              <option value="75" ${data?.practicalMax === 75 ? 'selected' : ''}>75</option>
-              <option value="100" ${data?.practicalMax === 100 ? 'selected' : ''}>100</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Assessment Marks</label>
-            <input type="number" class="practical-assessment" min="0" value="${data?.practicalAssessment || ''}" placeholder="0">
-          </div>
-        </div>
-        
-        <div class="practical-row" style="display: ${subjectType === 'theory_with_practical' ? 'grid' : 'none'}; grid-column: 1 / -1;">
-          <div class="form-group">
-            <label>Practical Max Marks</label>
-            <select class="practical-max" required>
-              <option value="">Select Max</option>
-              <option value="25" ${data?.practicalMax === 25 ? 'selected' : ''}>25</option>
-              <option value="50" ${data?.practicalMax === 50 ? 'selected' : ''}>50</option>
-              <option value="100" ${data?.practicalMax === 100 ? 'selected' : ''}>100</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Practical Marks</label>
-            <input type="number" class="practical-marks" min="0" value="${data?.practicalMarks || ''}" placeholder="0">
-          </div>
-        </div>
-      </form>
     `;
-
-    // Subject type change handler
-    const subjectTypeSelect = card.querySelector('.subject-type');
-    const theoryMarksRow = card.querySelector('.theory-marks');
-    const practicalMarksOnly = card.querySelector('.practical-marks-only');
-    const practicalRow = card.querySelector('.practical-row');
-    const internalInput = card.querySelector('.internal-marks');
-    const finalInput = card.querySelector('.final-marks');
-    const practicalMaxSolo = card.querySelector('.practical-max-solo');
-    const practicalAssessment = card.querySelector('.practical-assessment');
-    const practicalMax = card.querySelector('.practical-max');
-    const practicalMarks = card.querySelector('.practical-marks');
-
-    subjectTypeSelect.addEventListener('change', (e) => {
-      const type = e.target.value;
-      
-      if (type === 'theory') {
-        theoryMarksRow.style.display = 'grid';
-        practicalMarksOnly.style.display = 'none';
-        practicalRow.style.display = 'none';
-        internalInput.required = true;
-        finalInput.required = true;
-        practicalMaxSolo.required = false;
-        practicalAssessment.required = false;
-        practicalMax.required = false;
-        practicalMarks.required = false;
-      } else if (type === 'practical') {
-        theoryMarksRow.style.display = 'none';
-        practicalMarksOnly.style.display = 'grid';
-        practicalRow.style.display = 'none';
-        internalInput.required = false;
-        finalInput.required = false;
-        practicalMaxSolo.required = true;
-        practicalAssessment.required = true;
-        practicalMax.required = false;
-        practicalMarks.required = false;
-      } else { // theory_with_practical
-        theoryMarksRow.style.display = 'grid';
-        practicalMarksOnly.style.display = 'none';
-        practicalRow.style.display = 'grid';
-        internalInput.required = true;
-        finalInput.required = true;
-        practicalMaxSolo.required = false;
-        practicalAssessment.required = false;
-        practicalMax.required = true;
-        practicalMarks.required = true;
-      }
-      calculateGrades();
-    });
-
-    // Update practical marks max
-    if (practicalMaxSolo) {
-      practicalMaxSolo.addEventListener('change', (e) => {
-        practicalAssessment.max = e.target.value;
-        practicalAssessment.placeholder = `Max ${e.target.value}`;
-      });
-    }
-
-    if (practicalMax) {
-      practicalMax.addEventListener('change', (e) => {
-        practicalMarks.max = e.target.value;
-        practicalMarks.placeholder = `Max ${e.target.value}`;
-      });
-    }
-
-    // Auto-calculate on input change
-    const inputs = card.querySelectorAll('input, select');
-    inputs.forEach(input => {
-      input.addEventListener('input', () => {
-        calculateGrades();
-      });
-    });
-
-    return card;
   }
 
-  // Remove Subject (global function)
-  window.removeSubject = (id) => {
-    const card = document.querySelector(`[data-id="${id}"]`);
-    if (card) {
-      card.remove();
-      const remainingCards = subjectsList.querySelectorAll('.subject-card');
-      if (remainingCards.length === 0) {
-        emptySubjects.style.display = 'block';
-        resultsSection.style.display = 'none';
-      }
-      calculateGrades();
-      saveSubjects();
-    }
-  };
-
-  // Get Subjects from Cards
-  function getSubjectsFromCards() {
-    const cards = subjectsList.querySelectorAll('.subject-card');
-    const subjectsData = [];
-
-    cards.forEach(card => {
-      const name = card.querySelector('.subject-name').value;
-      const credit = parseFloat(card.querySelector('.credit-hours').value) || 0;
-      const subjectType = card.querySelector('.subject-type').value;
-      
-      if (!name || !credit) return;
-
-      let totalMarks, maxMarks, percentage;
-
-      if (subjectType === 'theory') {
-        // Theory only: Internal + Final (max 100)
-        const internal = parseFloat(card.querySelector('.internal-marks').value) || 0;
-        const final = parseFloat(card.querySelector('.final-marks').value) || 0;
-        totalMarks = internal + final;
-        maxMarks = 100;
-        percentage = (totalMarks / maxMarks) * 100;
-
-        const gradeInfo = getGrade(percentage);
-        subjectsData.push({
-          name,
-          credit,
-          subjectType,
-          internal,
-          final,
-          practicalMarks: 0,
-          totalMarks,
-          maxMarks,
-          percentage,
-          grade: gradeInfo.letter,
-          point: gradeInfo.point
-        });
-
-      } else if (subjectType === 'practical') {
-        // Practical only: Assessment marks only
-        const practicalMax = parseInt(card.querySelector('.practical-max-solo').value, 10) || 0;
-        const practicalAssessment = parseFloat(card.querySelector('.practical-assessment').value) || 0;
-        totalMarks = practicalAssessment;
-        maxMarks = practicalMax;
-        percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
-
-        const gradeInfo = getGrade(percentage);
-        subjectsData.push({
-          name,
-          credit,
-          subjectType,
-          internal: 0,
-          final: 0,
-          practicalMax,
-          practicalMarks: practicalAssessment,
-          totalMarks,
-          maxMarks,
-          percentage,
-          grade: gradeInfo.letter,
-          point: gradeInfo.point
-        });
-
-      } else { // theory_with_practical
-        // Theory + Practical combined in one subject
-        const internal = parseFloat(card.querySelector('.internal-marks').value) || 0;
-        const final = parseFloat(card.querySelector('.final-marks').value) || 0;
-        const practicalMax = parseInt(card.querySelector('.practical-max').value, 10) || 0;
-        const practicalMarks = parseFloat(card.querySelector('.practical-marks').value) || 0;
-        
-        const theoryMarks = internal + final;
-        totalMarks = theoryMarks + practicalMarks;
-        maxMarks = 100 + practicalMax;
-        percentage = (totalMarks / maxMarks) * 100;
-
-        const gradeInfo = getGrade(percentage);
-        subjectsData.push({
-          name,
-          credit,
-          subjectType,
-          internal,
-          final,
-          practicalMax,
-          practicalMarks,
-          totalMarks,
-          maxMarks,
-          percentage,
-          grade: gradeInfo.letter,
-          point: gradeInfo.point
-        });
-      }
-    });
-
-    return subjectsData;
-  }
-
-  // Calculate Grades
-  function calculateGrades() {
-    subjects = getSubjectsFromCards();
+  function updatePracticalPreview() {
+    const max = safeInt(practicalMaxSelect.value);
+    const marks = safeFloat(practicalMarksInput.value);
     
-    if (subjects.length === 0) {
-      totalCreditsEl.textContent = '0';
-      sgpaEl.textContent = '0.00';
-      percentageEl.textContent = '0%';
-      gradeTableBody.innerHTML = '';
+    if (max > 0) {
+      const percentage = (marks / max) * 100;
+      const grade = getGrade(percentage);
+
+      practicalPreview.innerHTML = `
+        <div class="preview-label">Preview</div>
+        <div class="preview-grade">
+          <span class="preview-marks">${marks}/${max} (${percentage.toFixed(1)}%)</span>
+          <span class="grade-badge grade-${grade.letter.replace('+', '')}">${grade.letter}</span>
+        </div>
+      `;
+    } else {
+      practicalPreview.innerHTML = '';
+    }
+  }
+
+  // Form Submit
+  subjectForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const name = subjectNameInput.value.trim();
+    const type = subjectTypeSelect.value;
+    const credit = safeFloat(creditHoursInput.value);
+
+    if (!name || credit <= 0) {
+      alert('Please fill all required fields correctly.');
       return;
     }
 
-    // Calculate totals
-    const totalCredits = subjects.reduce((sum, sub) => sum + sub.credit, 0);
-    const weightedPoints = subjects.reduce((sum, sub) => sum + (sub.credit * sub.point), 0);
-    const sgpa = totalCredits > 0 ? (weightedPoints / totalCredits).toFixed(2) : '0.00';
-    
-    const weightedPercentage = subjects.reduce((sum, sub) => sum + (sub.percentage * sub.credit), 0);
-    const avgPercentage = totalCredits > 0 ? (weightedPercentage / totalCredits).toFixed(2) : '0.00';
+    let subject;
 
-    // Update display
-    totalCreditsEl.textContent = totalCredits.toFixed(1);
-    sgpaEl.textContent = sgpa;
-    percentageEl.textContent = avgPercentage + '%';
+    if (type === 'theory') {
+      const assessment = safeFloat(assessmentInput.value);
+      const final = safeFloat(finalInput.value);
 
-    // Render table
-    renderGradeTable();
-    
-    // Save to localStorage
+      // Validation
+      if (assessment < 0 || assessment > 40) {
+        alert('Assessment marks must be between 0 and 40.');
+        return;
+      }
+      if (final < 0 || final > 60) {
+        alert('Final marks must be between 0 and 60.');
+        return;
+      }
+
+      const total = assessment + final;
+      const percentage = total; // Out of 100
+      const grade = getGrade(percentage);
+
+      subject = {
+        id: Date.now(),
+        name,
+        type,
+        credit,
+        assessment,
+        final,
+        total,
+        maxMarks: 100,
+        percentage,
+        grade: grade.letter,
+        point: grade.point
+      };
+    } else {
+      const max = safeInt(practicalMaxSelect.value);
+      const marks = safeFloat(practicalMarksInput.value);
+
+      // Validation
+      if (max <= 0) {
+        alert('Please select practical max marks.');
+        return;
+      }
+      if (marks < 0 || marks > max) {
+        alert(`Practical marks must be between 0 and ${max}.`);
+        return;
+      }
+
+      const percentage = (marks / max) * 100;
+      const grade = getGrade(percentage);
+
+      subject = {
+        id: Date.now(),
+        name,
+        type,
+        credit,
+        practicalMax: max,
+        practicalMarks: marks,
+        total: marks,
+        maxMarks: max,
+        percentage,
+        grade: grade.letter,
+        point: grade.point
+      };
+    }
+
+    subjects.push(subject);
+
+    // If in pair mode and just added theory, prompt for PR
+    if (isPairMode && type === 'theory' && !pairSubject) {
+      pairSubject = subject;
+      subjectForm.reset();
+      subjectTypeSelect.value = 'practical';
+      subjectTypeSelect.disabled = true;
+      toggleFieldsByType('practical');
+      subjectNameInput.value = name + ' PR';
+      creditHoursInput.value = '1'; // Default PR credit
+      modalTitle.textContent = 'Add Practical (PR)';
+      return;
+    }
+
+    // Done adding
     saveSubjects();
+    renderTable();
+    calculateResults();
+    resultsSection.style.display = 'block';
+    closeModal();
+  });
+
+  // Modal Controls
+  function openModal(title = 'Add Subject') {
+    modalTitle.textContent = title;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    subjectNameInput.focus();
   }
 
-  // Render Grade Table
-  function renderGradeTable() {
-    gradeTableBody.innerHTML = '';
+  function closeModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    subjectForm.reset();
+    theoryPreview.innerHTML = '';
+    practicalPreview.innerHTML = '';
+    isPairMode = false;
+    pairSubject = null;
+    subjectTypeSelect.disabled = false;
+    toggleFieldsByType('theory');
+  }
+
+  modalClose.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', closeModal);
+
+  // Delete Subject
+  window.deleteSubject = (id) => {
+    if (confirm('Are you sure you want to delete this subject?')) {
+      subjects = subjects.filter(s => s.id !== id);
+      saveSubjects();
+      renderTable();
+      calculateResults();
+
+      if (subjects.length === 0) {
+        resultsSection.style.display = 'none';
+      }
+    }
+  };
+
+  // Render Table
+  function renderTable() {
+    subjectsTableBody.innerHTML = '';
+
+    if (subjects.length === 0) {
+      emptyState.style.display = 'block';
+      return;
+    }
+
+    emptyState.style.display = 'none';
 
     subjects.forEach(sub => {
       const row = document.createElement('tr');
       
-      let internalDisplay, finalDisplay, practicalDisplay;
-      
-      if (sub.subjectType === 'theory') {
-        internalDisplay = sub.internal;
-        finalDisplay = sub.final;
-        practicalDisplay = '-';
-      } else if (sub.subjectType === 'practical') {
-        internalDisplay = '-';
-        finalDisplay = '-';
-        practicalDisplay = `${sub.practicalMarks}/${sub.maxMarks}`;
-      } else { // theory_with_practical
-        internalDisplay = sub.internal;
-        finalDisplay = sub.final;
-        practicalDisplay = `${sub.practicalMarks}/${sub.practicalMax}`;
-      }
-      
+      const assessmentDisplay = sub.type === 'theory' ? sub.assessment : (sub.type === 'practical' ? sub.practicalMarks : '-');
+      const finalDisplay = sub.type === 'theory' ? sub.final : '-';
+
       row.innerHTML = `
-        <td>${sub.name}</td>
-        <td>${sub.credit}</td>
-        <td>${internalDisplay}</td>
-        <td>${finalDisplay}</td>
-        <td>${practicalDisplay}</td>
-        <td>${sub.totalMarks}/${sub.maxMarks}</td>
-        <td><span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span></td>
-        <td>${sub.point.toFixed(1)}</td>
+        <td><strong>${sub.name}</strong></td>
+        <td>
+          <span class="subject-type-badge badge-${sub.type}">
+            ${sub.type === 'theory' ? 'Theory' : 'PR'}
+          </span>
+        </td>
+        <td class="credit-col">${sub.credit}</td>
+        <td class="marks-col">${assessmentDisplay}</td>
+        <td class="marks-col">${finalDisplay}</td>
+        <td class="grade-col">
+          <span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span>
+        </td>
+        <td class="action-col">
+          <button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
       `;
-      
-      gradeTableBody.appendChild(row);
+
+      subjectsTableBody.appendChild(row);
     });
   }
 
-  // Save Subjects to localStorage
-  function saveSubjects() {
-    const cards = subjectsList.querySelectorAll('.subject-card');
-    const cardsData = [];
+  // Calculate Results
+  function calculateResults() {
+    if (subjects.length === 0) {
+      totalCreditsEl.textContent = '0';
+      sgpaEl.textContent = '0.00';
+      sgpaGradeEl.textContent = '';
+      percentageEl.textContent = '0%';
+      distributionBarsEl.innerHTML = '';
+      return;
+    }
 
-    cards.forEach(card => {
-      const name = card.querySelector('.subject-name').value;
-      const credit = card.querySelector('.credit-hours').value;
-      const subjectType = card.querySelector('.subject-type').value;
-      const internal = card.querySelector('.internal-marks').value;
-      const final = card.querySelector('.final-marks').value;
-      
-      let practicalMax, practicalMarks, practicalAssessment;
-      
-      if (subjectType === 'practical') {
-        practicalMax = card.querySelector('.practical-max-solo').value;
-        practicalAssessment = card.querySelector('.practical-assessment').value;
-        practicalMarks = null;
-      } else if (subjectType === 'theory_with_practical') {
-        practicalMax = card.querySelector('.practical-max').value;
-        practicalMarks = card.querySelector('.practical-marks').value;
-        practicalAssessment = null;
-      } else {
-        practicalMax = null;
-        practicalMarks = null;
-        practicalAssessment = null;
+    // Calculate totals with safe math
+    const totalCredits = subjects.reduce((sum, sub) => sum + safeFloat(sub.credit), 0);
+    const weightedPoints = subjects.reduce((sum, sub) => {
+      return sum + (safeFloat(sub.credit) * safeFloat(sub.point));
+    }, 0);
+    
+    const sgpa = totalCredits > 0 ? (weightedPoints / totalCredits) : 0;
+    const sgpaGrade = getGrade((sgpa / 4.0) * 100);
+
+    const weightedPercentage = subjects.reduce((sum, sub) => {
+      return sum + (safeFloat(sub.percentage) * safeFloat(sub.credit));
+    }, 0);
+    const avgPercentage = totalCredits > 0 ? (weightedPercentage / totalCredits) : 0;
+
+    // Update display
+    totalCreditsEl.textContent = totalCredits.toFixed(1);
+    sgpaEl.textContent = sgpa.toFixed(2);
+    sgpaGradeEl.textContent = sgpaGrade.letter;
+    percentageEl.textContent = avgPercentage.toFixed(2) + '%';
+
+    // Grade Distribution
+    renderGradeDistribution();
+  }
+
+  // Render Grade Distribution
+  function renderGradeDistribution() {
+    const distribution = {};
+    subjects.forEach(sub => {
+      distribution[sub.grade] = (distribution[sub.grade] || 0) + 1;
+    });
+
+    const grades = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'F'];
+    distributionBarsEl.innerHTML = '';
+
+    grades.forEach(grade => {
+      const count = distribution[grade] || 0;
+      if (count > 0) {
+        const percentage = (count / subjects.length) * 100;
+        
+        const barDiv = document.createElement('div');
+        barDiv.className = 'distribution-bar';
+        barDiv.innerHTML = `
+          <div class="bar-label grade-badge grade-${grade.replace('+', '')}">${grade}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width: ${percentage}%">
+              <span class="bar-count">${count}</span>
+            </div>
+          </div>
+        `;
+        distributionBarsEl.appendChild(barDiv);
       }
-
-      cardsData.push({
-        name,
-        credit,
-        subjectType,
-        internal,
-        final,
-        practicalMax: parseInt(practicalMax, 10) || 0,
-        practicalMarks,
-        practicalAssessment
-      });
     });
-
-    const key = `ioe_subjects_${currentProgram}_${currentSemester}`;
-    localStorage.setItem(key, JSON.stringify(cardsData));
   }
 
-  // Load Subjects from localStorage
+  // LocalStorage
+  function saveSubjects() {
+    const key = `ioe_subjects_${currentProgram}_${currentSemester}`;
+    localStorage.setItem(key, JSON.stringify(subjects));
+  }
+
   function loadSubjects() {
     const key = `ioe_subjects_${currentProgram}_${currentSemester}`;
     const saved = localStorage.getItem(key);
     
     if (saved) {
-      const cardsData = JSON.parse(saved);
-      subjectsList.innerHTML = '';
-      subjectCounter = 0;
-      
-      if (cardsData.length > 0) {
-        emptySubjects.style.display = 'none';
-        cardsData.forEach(data => {
-          subjectCounter++;
-          const card = createSubjectCard(subjectCounter, data);
-          subjectsList.appendChild(card);
-        });
-      } else {
-        emptySubjects.style.display = 'block';
+      try {
+        subjects = JSON.parse(saved);
+      } catch (e) {
+        subjects = [];
       }
     } else {
-      subjectsList.innerHTML = '';
-      subjectCounter = 0;
-      emptySubjects.style.display = 'block';
+      subjects = [];
     }
   }
 
-  // Render Subjects (refresh display)
-  function renderSubjects() {
-    if (subjectsList.querySelectorAll('.subject-card').length > 0) {
-      emptySubjects.style.display = 'none';
-    } else {
-      emptySubjects.style.display = 'block';
-    }
-  }
-
-  // Calculate button
-  calculateBtn.addEventListener('click', () => {
-    calculateGrades();
-  });
+  // Initialize
+  toggleFieldsByType('theory');
 });
