@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IOE Grade Calculator</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="background-animation"></div>
+    <div class="container">
+      <header>
+        <h1>IOE Grade Calculator</h1>
+        <p>
+          Calculate your Semester Grade Point Average (SGPA) based on IOE
+          Grading System.
+        </p>
+      </header>
+
+      <div class="calculator-wrapper">
+        <!-- Input Form -->
+        <div class="input-section glass-panel">
+          <h2>Add Subject</h2>
+          <form id="subjectForm">
+            <div class="form-group">
+              <label for="subjectName">Subject Name</label>
+              <input
+                type="text"
+                id="subjectName"
+                placeholder="e.g. Applied Math"
+                required
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="creditHours">Credit Hours</label>
+                <input
+                  type="number"
+                  id="creditHours"
+                  min="1"
+                  max="5"
+                  step="0.5"
+                  placeholder="3"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="internalMarks">Internal (40)</label>
+                <input
+                  type="number"
+                  id="internalMarks"
+                  min="0"
+                  max="40"
+                  step="1"
+                  placeholder="Max 40"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="finalMarks">Final (60)</label>
+                <input
+                  type="number"
+                  id="finalMarks"
+                  min="0"
+                  max="60"
+                  step="1"
+                  placeholder="Max 60"
+                  required
+                />
+              </div>
+            </div>
+            <button type="submit" class="btn-add">
+              <i class="fas fa-plus"></i> Add Subject
+            </button>
+            <div id="formError" class="error-message"></div>
+          </form>
+        </div>
+
+        <!-- Results & List -->
+        <div class="results-section glass-panel">
+          <div class="score-card">
+            <div class="score-item">
+              <span class="label">Total Credits</span>
+              <span class="value" id="totalCredits">0</span>
+            </div>
+            <div class="score-item highlight">
+              <span class="label">SGPA</span>
+              <span class="value" id="sgpa">0.00</span>
+            </div>
+            <div class="score-item">
+              <span class="label">Percentage</span>
+              <span class="value" id="totalPercentage">0%</span>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table id="gradeTable">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Credit</th>
+                  <th>Int.</th>
+                  <th>Final</th>
+                  <th>Total</th>
+                  <th>Grade</th>
+                  <th>Point</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rows will be added here dynamically -->
+              </tbody>
+            </table>
+            <div id="emptyState" class="empty-state">
+              <p>No subjects added yet. Start by adding one above!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
