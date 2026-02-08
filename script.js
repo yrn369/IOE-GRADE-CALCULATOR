@@ -102,7 +102,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (currentSemester) {
       subjectsSection.style.display = 'block';
-      loadSubjects();
+      
+      // Check if BEI and has curriculum data
+      if (currentProgram === 'BEI' && typeof BEI_CURRICULUM !== 'undefined') {
+        loadBEICurriculum(currentSemester);
+      } else {
+        loadSubjects();
+      }
       
       if (subjects.length > 0) {
         renderTable();
@@ -114,6 +120,83 @@ document.addEventListener('DOMContentLoaded', () => {
       resultsSection.style.display = 'none';
     }
   });
+
+  // Load BEI Curriculum
+  function loadBEICurriculum(semester) {
+    const semesterNum = parseInt(semester, 10);
+    const curriculumData = BEI_CURRICULUM[semesterNum];
+    
+    if (!curriculumData) {
+      subjects = [];
+      return;
+    }
+
+    // Check if already have saved marks for this semester
+    const saved = getSavedMarks();
+    
+    // Create subjects from curriculum
+    subjects = curriculumData.map((subject, index) => {
+      const savedSubject = saved.find(s => s.code === subject.code);
+      
+      return {
+        id: Date.now() + index,
+        code: subject.code,
+        name: subject.name,
+        credit: subject.credits,
+        assessmentMax: subject.assessmentMax,
+        finalMax: subject.finalMax,
+        practicalMax: subject.practicalMax,
+        // Use saved marks if available, otherwise 0
+        assessment: savedSubject?.assessment || 0,
+        final: savedSubject?.final || 0,
+        practicalMarks: savedSubject?.practicalMarks || 0,
+        // Will be calculated
+        total: 0,
+        maxMarks: 0,
+        percentage: 0,
+        grade: '-',
+        point: 0
+      };
+    });
+
+    // Calculate grades for all subjects
+    subjects.forEach(sub => {
+      calculateSubjectGrade(sub);
+    });
+
+    renderTable();
+    calculateResults();
+    resultsSection.style.display = 'block';
+  }
+
+  // Calculate individual subject grade
+  function calculateSubjectGrade(subject) {
+    const assessment = safeFloat(subject.assessment);
+    const final = safeFloat(subject.final);
+    const practical = safeFloat(subject.practicalMarks);
+    
+    let total, maxMarks, percentage;
+
+    // Determine subject type based on max marks
+    if (subject.finalMax > 0) {
+      // Theory subject (has final exam)
+      total = assessment + final + practical;
+      maxMarks = subject.assessmentMax + subject.finalMax + subject.practicalMax;
+    } else {
+      // Practical/Project only
+      total = practical;
+      maxMarks = subject.practicalMax;
+    }
+
+    percentage = maxMarks > 0 ? (total / maxMarks) * 100 : 0;
+    const grade = getGrade(percentage);
+
+    subject.total = total;
+    subject.maxMarks = maxMarks;
+    subject.percentage = percentage;
+    subject.grade = grade.letter;
+    subject.point = grade.point;
+  }
 
   // Quick Add Theory + PR Pair
   addTheoryPairBtn.addEventListener('click', () => {
@@ -360,34 +443,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
     emptyState.style.display = 'none';
 
-    subjects.forEach(sub => {
+    const isBEI = currentProgram === 'BEI';
+
+    subjects.forEach((sub, idx) => {
       const row = document.createElement('tr');
       
-      const assessmentDisplay = sub.type === 'theory' ? sub.assessment : (sub.type === 'practical' ? sub.practicalMarks : '-');
-      const finalDisplay = sub.type === 'theory' ? sub.final : '-';
+      // For BEI, show editable inputs for marks
+      let assessmentDisplay, finalDisplay;
+      
+      if (isBEI) {
+        // Show max marks and make editable
+        if (sub.finalMax > 0) {
+          // Theory subject - has assessment and final
+          assessmentDisplay = `<input type="number" class="subject-input marks-input" 
+            data-index="${idx}" data-field="assessment" 
+            min="0" max="${sub.assessmentMax}" 
+            value="${sub.assessment || 0}" 
+            placeholder="0" />`;
+          
+          finalDisplay = `<input type="number" class="subject-input marks-input" 
+            data-index="${idx}" data-field="final" 
+            min="0" max="${sub.finalMax}" 
+            value="${sub.final || 0}" 
+            placeholder="0" />`;
+        } else {
+          // Project/Workshop - practical only
+          assessmentDisplay = `<input type="number" class="subject-input marks-input" 
+            data-index="${idx}" data-field="practicalMarks" 
+            min="0" max="${sub.practicalMax}" 
+            value="${sub.practicalMarks || 0}" 
+            placeholder="0" />`;
+          
+          finalDisplay = '-';
+        }
+      } else {
+        // For other programs, show static values
+        assessmentDisplay = sub.assessment || 0;
+        finalDisplay = sub.final || '-';
+      }
 
       row.innerHTML = `
-        <td><strong>${sub.name}</strong></td>
+        <td><strong>${sub.name}</strong><br><small style="color: var(--text-tertiary)">${sub.code || ''}</small></td>
         <td>
-          <span class="subject-type-badge badge-${sub.type}">
-            ${sub.type === 'theory' ? 'Theory' : 'PR'}
-          </span>
+          ${sub.finalMax > 0 ? 
+            '<span class="subject-type-badge badge-theory">Theory</span>' : 
+            '<span class="subject-type-badge badge-practical">PR</span>'}
+          ${isBEI && sub.practicalMax > 0 && sub.finalMax > 0 ? 
+            '<span class="subject-type-badge badge-practical" style="margin-left: 4px;">+PR</span>' : ''}
         </td>
         <td class="credit-col">${sub.credit}</td>
-        <td class="marks-col">${assessmentDisplay}</td>
-        <td class="marks-col">${finalDisplay}</td>
+        <td class="marks-col">${assessmentDisplay}<br><small style="color: var(--text-tertiary)">Max ${sub.finalMax > 0 ? sub.assessmentMax : sub.practicalMax}</small></td>
+        <td class="marks-col">${finalDisplay}${sub.finalMax > 0 ? '<br><small style="color: var(--text-tertiary)">Max ' + sub.finalMax + '</small>' : ''}</td>
         <td class="grade-col">
           <span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span>
         </td>
         <td class="action-col">
-          <button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
+          ${!isBEI ? `<button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
             <i class="fas fa-trash"></i>
-          </button>
+          </button>` : ''}
         </td>
       `;
 
       subjectsTableBody.appendChild(row);
     });
+
+    // Add event listeners for inline editing (BEI only)
+    if (isBEI) {
+      const marksInputs = document.querySelectorAll('.marks-input');
+      marksInputs.forEach(input => {
+        input.addEventListener('input', handleInlineMarksChange);
+        input.addEventListener('blur', saveMarks);
+      });
+    }
+  }
+
+  // Handle inline marks change
+  function handleInlineMarksChange(e) {
+    const index = parseInt(e.target.dataset.index, 10);
+    const field = e.target.dataset.field;
+    const value = safeFloat(e.target.value);
+
+    if (subjects[index]) {
+      subjects[index][field] = value;
+      calculateSubjectGrade(subjects[index]);
+      
+      // Update only the grade cell for this row
+      const row = e.target.closest('tr');
+      const gradeCell = row.querySelector('.grade-col .grade-badge');
+      if (gradeCell) {
+        const sub = subjects[index];
+        gradeCell.className = `grade-badge grade-${sub.grade.replace('+', '')}`;
+        gradeCell.textContent = sub.grade;
+      }
+
+      // Update results
+      calculateResults();
+    }
   }
 
   // Calculate Results
@@ -474,6 +625,37 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       subjects = [];
     }
+  }
+
+  // Save/Load marks for BEI curriculum
+  function saveMarks() {
+    if (currentProgram !== 'BEI') return;
+    
+    const key = `bei_marks_${currentSemester}`;
+    const marksData = subjects.map(sub => ({
+      code: sub.code,
+      assessment: sub.assessment || 0,
+      final: sub.final || 0,
+      practicalMarks: sub.practicalMarks || 0
+    }));
+    
+    localStorage.setItem(key, JSON.stringify(marksData));
+  }
+
+  function getSavedMarks() {
+    if (currentProgram !== 'BEI') return [];
+    
+    const key = `bei_marks_${currentSemester}`;
+    const saved = localStorage.getItem(key);
+    
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   }
 
   // Initialize
