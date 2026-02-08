@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IOE Grade Calculator</title>
+    <title>IOE Grade Calculator </title>
+    <meta
+      name="description"
+      content="Calculate your IOE Semester Grade Point Average (SGPA) and Percentage easily. Accurate grading system for IOE engineering students."
+    />
+    <meta
+      name="keywords"
+      content="IOE, Grade Calculator, SGPA, Engineering, Nepal, Pulchowk, Tribhuvan University, GPA"
+    />
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,10 +23,11 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <script src="script.js" defer></script>
   </head>
   <body>
     <div class="background-animation"></div>
-    <div class="container">
+    <main class="container">
       <header>
         <h1>IOE Grade Calculator</h1>
         <p>
@@ -29,7 +38,7 @@
 
       <div class="calculator-wrapper">
         <!-- Input Form -->
-        <div class="input-section glass-panel">
+        <section class="input-section glass-panel">
           <h2>Add Subject</h2>
           <form id="subjectForm">
             <div class="form-group">
@@ -82,13 +91,13 @@
             <button type="submit" class="btn-add">
               <i class="fas fa-plus"></i> Add Subject
             </button>
-            <div id="formError" class="error-message"></div>
+            <div id="formError" class="error-message" aria-live="polite"></div>
           </form>
-        </div>
+        </section>
 
         <!-- Results & List -->
-        <div class="results-section glass-panel">
-          <div class="score-card">
+        <section class="results-section glass-panel">
+          <div class="score-card" aria-live="polite">
             <div class="score-item">
               <span class="label">Total Credits</span>
               <span class="value" id="totalCredits">0</span>
@@ -125,10 +134,8 @@
               <p>No subjects added yet. Start by adding one above!</p>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
-
-    <script src="script.js"></script>
+    </main>
   </body>
 </html>

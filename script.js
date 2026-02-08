@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   // State
-  let subjects = [];
+  let subjects = JSON.parse(localStorage.getItem("ioe_subjects")) || [];
 
   // DOM Elements
   const form = document.getElementById("subjectForm");
@@ -35,6 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return null;
   };
 
+  // Update Storage
+  const updateStorage = () => {
+    localStorage.setItem("ioe_subjects", JSON.stringify(subjects));
+  };
+
   // Add Subject
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -54,8 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Calculation
     const totalMarks = internal + final;
-    // Percentage is essentially totalMarks since max is 100 (40+60)
-    // But strictly speaking: (totalMarks / 100) * 100
     const percentage = totalMarks;
     const gradeInfo = getGrade(percentage);
 
@@ -72,15 +75,26 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     subjects.push(newSubject);
+    updateStorage();
     renderTable();
     calculateResults();
     form.reset();
     subjectNameInput.focus();
   });
 
-  // Delete Subject
-  window.deleteSubject = (id) => {
+  // Table Event Delegation (Delete)
+  gradeTableBody.addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest(".btn-delete");
+    if (deleteBtn) {
+      const id = parseInt(deleteBtn.dataset.id, 10);
+      deleteSubject(id);
+    }
+  });
+
+  // Delete Subject Logic
+  const deleteSubject = (id) => {
     subjects = subjects.filter((sub) => sub.id !== id);
+    updateStorage();
     renderTable();
     calculateResults();
   };
@@ -98,6 +112,9 @@ document.addEventListener("DOMContentLoaded", () => {
     gradeTable.style.display = "table";
     emptyState.style.display = "none";
 
+    // Use DocumentFragment for performance
+    const fragment = document.createDocumentFragment();
+
     subjects.forEach((sub) => {
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -109,13 +126,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="grade-badge grade-${sub.grade.replace("+", "")}">${sub.grade}</span></td>
                 <td>${sub.point}</td>
                 <td>
-                    <button class="action-btn btn-delete" onclick="deleteSubject(${sub.id})">
+                    <button class="action-btn btn-delete" data-id="${sub.id}" aria-label="Delete ${sub.name}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
-      gradeTableBody.appendChild(row);
+      fragment.appendChild(row);
     });
+    gradeTableBody.appendChild(fragment);
   };
 
   // Calculate Overall Results
@@ -137,8 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const sgpa =
       totalCredits > 0 ? (weightedPoints / totalCredits).toFixed(2) : "0.00";
 
-    // Overall Percentage (Weighted by credit hours is the standard way or just average marks?)
-    // Usually Aggregate % = (Sum of (Marks * Credit)) / Sum of Credits
     const weightedMarks = subjects.reduce(
       (sum, sub) => sum + sub.totalMarks * sub.credit,
       0,
@@ -150,4 +166,8 @@ document.addEventListener("DOMContentLoaded", () => {
     sgpaEl.textContent = sgpa;
     totalPercentageEl.textContent = aggregatePercentage + "%";
   };
+
+  // Initial Render
+  renderTable();
+  calculateResults();
 });
