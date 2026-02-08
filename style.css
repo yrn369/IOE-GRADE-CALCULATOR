@@ -346,6 +346,15 @@ table:not(:has(tbody tr)) {
   color: var(--text-dim);
 }
 
+.footer a {
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.footer a:hover {
+  opacity: 0.8;
+}
+
 .footer strong {
   background: linear-gradient(
     135deg,
