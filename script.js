@@ -103,9 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentSemester) {
       subjectsSection.style.display = 'block';
       
-      // Check if BEI and has curriculum data
-      if (currentProgram === 'BEI' && typeof BEI_CURRICULUM !== 'undefined') {
-        loadBEICurriculum(currentSemester);
+      // Check if program has curriculum data
+      const hasCurriculum = (currentProgram === 'BEI' && typeof BEI_CURRICULUM !== 'undefined') ||
+                           (currentProgram === 'BCT' && typeof BCT_CURRICULUM !== 'undefined');
+      
+      if (hasCurriculum) {
+        loadProgramCurriculum(currentSemester);
       } else {
         loadSubjects();
       }
@@ -121,10 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Load BEI Curriculum
-  function loadBEICurriculum(semester) {
+  // Load Program Curriculum (BEI or BCT)
+  function loadProgramCurriculum(semester) {
     const semesterNum = parseInt(semester, 10);
-    const curriculumData = BEI_CURRICULUM[semesterNum];
+    let curriculumData = null;
+    
+    if (currentProgram === 'BEI' && typeof BEI_CURRICULUM !== 'undefined') {
+      curriculumData = BEI_CURRICULUM[semesterNum];
+    } else if (currentProgram === 'BCT' && typeof BCT_CURRICULUM !== 'undefined') {
+      curriculumData = BCT_CURRICULUM[semesterNum];
+    }
     
     if (!curriculumData) {
       subjects = [];
@@ -443,15 +452,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     emptyState.style.display = 'none';
 
-    const isBEI = currentProgram === 'BEI';
+    const hasCurriculum = currentProgram === 'BEI' || currentProgram === 'BCT';
 
     subjects.forEach((sub, idx) => {
       const row = document.createElement('tr');
       
-      // For BEI, show editable inputs for marks
+      // For programs with curriculum, show editable inputs for marks
       let assessmentDisplay, finalDisplay;
       
-      if (isBEI) {
+      if (hasCurriculum) {
         // Show max marks and make editable
         if (sub.finalMax > 0) {
           // Theory subject - has assessment and final
@@ -488,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${sub.finalMax > 0 ? 
             '<span class="subject-type-badge badge-theory">Theory</span>' : 
             '<span class="subject-type-badge badge-practical">PR</span>'}
-          ${isBEI && sub.practicalMax > 0 && sub.finalMax > 0 ? 
+          ${hasCurriculum && sub.practicalMax > 0 && sub.finalMax > 0 ? 
             '<span class="subject-type-badge badge-practical" style="margin-left: 4px;">+PR</span>' : ''}
         </td>
         <td class="credit-col">${sub.credit}</td>
@@ -498,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span>
         </td>
         <td class="action-col">
-          ${!isBEI ? `<button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
+          ${!hasCurriculum ? `<button class="btn-delete" onclick="deleteSubject(${sub.id})" title="Delete">
             <i class="fas fa-trash"></i>
           </button>` : ''}
         </td>
@@ -507,8 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
       subjectsTableBody.appendChild(row);
     });
 
-    // Add event listeners for inline editing (BEI only)
-    if (isBEI) {
+    // Add event listeners for inline editing (curriculum programs only)
+    if (hasCurriculum) {
       const marksInputs = document.querySelectorAll('.marks-input');
       marksInputs.forEach(input => {
         input.addEventListener('input', handleInlineMarksChange);
@@ -627,11 +636,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Save/Load marks for BEI curriculum
+  // Save/Load marks for curriculum programs (BEI, BCT)
   function saveMarks() {
-    if (currentProgram !== 'BEI') return;
+    const hasCurriculum = currentProgram === 'BEI' || currentProgram === 'BCT';
+    if (!hasCurriculum) return;
     
-    const key = `bei_marks_${currentSemester}`;
+    const key = `${currentProgram.toLowerCase()}_marks_${currentSemester}`;
     const marksData = subjects.map(sub => ({
       code: sub.code,
       assessment: sub.assessment || 0,
@@ -643,9 +653,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getSavedMarks() {
-    if (currentProgram !== 'BEI') return [];
+    const hasCurriculum = currentProgram === 'BEI' || currentProgram === 'BCT';
+    if (!hasCurriculum) return [];
     
-    const key = `bei_marks_${currentSemester}`;
+    const key = `${currentProgram.toLowerCase()}_marks_${currentSemester}`;
     const saved = localStorage.getItem(key);
     
     if (saved) {
