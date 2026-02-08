@@ -27,9 +27,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (percentage >= 70) return { letter: 'B+', point: 3.3 };
     if (percentage >= 60) return { letter: 'B', point: 3.0 };
     if (percentage >= 50) return { letter: 'B-', point: 2.7 };
-    if (percentage >= 40) return { letter: 'C', point: 2.4 };
+    if (percentage >= 40) return { letter: 'C+', point: 2.4 };
+    if (percentage >= 35) return { letter: 'C', point: 2.0 };
     return { letter: 'F', point: 0.0 };
   };
+
+  // Subject Type Handler
+  const getSubjectType = () => {
+    return {
+      THEORY: 'theory',
+      PRACTICAL: 'practical',
+      THEORY_WITH_PRACTICAL: 'theory_with_practical'
+    };
+  };
+
+  const SUBJECT_TYPES = getSubjectType();
 
   // Program Selection Handler
   programSelect.addEventListener('change', (e) => {
@@ -99,6 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
     card.className = 'subject-card';
     card.dataset.id = id;
 
+    const subjectType = data?.subjectType || 'theory';
+
     card.innerHTML = `
       <div class="subject-card-header">
         <span class="subject-number">Subject ${id}</span>
@@ -112,26 +126,47 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="text" class="subject-name" placeholder="e.g., Applied Mathematics" value="${data?.name || ''}" required>
         </div>
         <div class="form-group">
+          <label>Subject Type</label>
+          <select class="subject-type" required>
+            <option value="theory" ${subjectType === 'theory' ? 'selected' : ''}>Theory Only</option>
+            <option value="practical" ${subjectType === 'practical' ? 'selected' : ''}>Practical Only</option>
+            <option value="theory_with_practical" ${subjectType === 'theory_with_practical' ? 'selected' : ''}>Theory + Practical</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Credit Hours</label>
-          <input type="number" class="credit-hours" min="1" max="10" step="0.5" value="${data?.credit || ''}" placeholder="3" required>
+          <input type="number" class="credit-hours" min="0.5" max="10" step="0.5" value="${data?.credit || ''}" placeholder="3" required>
         </div>
         
-        <div class="marks-row">
+        <div class="marks-row theory-marks" style="display: ${subjectType !== 'practical' ? 'grid' : 'none'};">
           <div class="form-group">
-            <label>Internal (Max 40)</label>
-            <input type="number" class="internal-marks" min="0" max="40" value="${data?.internal || ''}" placeholder="0" required>
+            <label>Assessment/Internal (Max 40)</label>
+            <input type="number" class="internal-marks" min="0" max="40" value="${data?.internal || ''}" placeholder="0">
           </div>
           <div class="form-group">
             <label>Final Theory (Max 60)</label>
-            <input type="number" class="final-marks" min="0" max="60" value="${data?.final || ''}" placeholder="0" required>
-          </div>
-          <div class="checkbox-group">
-            <input type="checkbox" class="has-practical" ${data?.hasPractical ? 'checked' : ''}>
-            <label>Has Practical</label>
+            <input type="number" class="final-marks" min="0" max="60" value="${data?.final || ''}" placeholder="0">
           </div>
         </div>
         
-        <div class="practical-row" style="display: ${data?.hasPractical ? 'grid' : 'none'};">
+        <div class="practical-marks-only" style="display: ${subjectType === 'practical' ? 'grid' : 'none'};">
+          <div class="form-group">
+            <label>Practical Max Marks</label>
+            <select class="practical-max-solo" required>
+              <option value="">Select Max</option>
+              <option value="25" ${data?.practicalMax === 25 ? 'selected' : ''}>25</option>
+              <option value="50" ${data?.practicalMax === 50 ? 'selected' : ''}>50</option>
+              <option value="75" ${data?.practicalMax === 75 ? 'selected' : ''}>75</option>
+              <option value="100" ${data?.practicalMax === 100 ? 'selected' : ''}>100</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Assessment Marks</label>
+            <input type="number" class="practical-assessment" min="0" value="${data?.practicalAssessment || ''}" placeholder="0">
+          </div>
+        </div>
+        
+        <div class="practical-row" style="display: ${subjectType === 'theory_with_practical' ? 'grid' : 'none'}; grid-column: 1 / -1;">
           <div class="form-group">
             <label>Practical Max Marks</label>
             <select class="practical-max" required>
@@ -149,31 +184,69 @@ document.addEventListener('DOMContentLoaded', () => {
       </form>
     `;
 
-    // Practical checkbox handler
-    const practicalCheckbox = card.querySelector('.has-practical');
+    // Subject type change handler
+    const subjectTypeSelect = card.querySelector('.subject-type');
+    const theoryMarksRow = card.querySelector('.theory-marks');
+    const practicalMarksOnly = card.querySelector('.practical-marks-only');
     const practicalRow = card.querySelector('.practical-row');
+    const internalInput = card.querySelector('.internal-marks');
+    const finalInput = card.querySelector('.final-marks');
+    const practicalMaxSolo = card.querySelector('.practical-max-solo');
+    const practicalAssessment = card.querySelector('.practical-assessment');
     const practicalMax = card.querySelector('.practical-max');
     const practicalMarks = card.querySelector('.practical-marks');
 
-    practicalCheckbox.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        practicalRow.style.display = 'grid';
-        practicalMax.required = true;
-        practicalMarks.required = true;
-      } else {
+    subjectTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      
+      if (type === 'theory') {
+        theoryMarksRow.style.display = 'grid';
+        practicalMarksOnly.style.display = 'none';
         practicalRow.style.display = 'none';
+        internalInput.required = true;
+        finalInput.required = true;
+        practicalMaxSolo.required = false;
+        practicalAssessment.required = false;
         practicalMax.required = false;
         practicalMarks.required = false;
-        practicalMax.value = '';
-        practicalMarks.value = '';
+      } else if (type === 'practical') {
+        theoryMarksRow.style.display = 'none';
+        practicalMarksOnly.style.display = 'grid';
+        practicalRow.style.display = 'none';
+        internalInput.required = false;
+        finalInput.required = false;
+        practicalMaxSolo.required = true;
+        practicalAssessment.required = true;
+        practicalMax.required = false;
+        practicalMarks.required = false;
+      } else { // theory_with_practical
+        theoryMarksRow.style.display = 'grid';
+        practicalMarksOnly.style.display = 'none';
+        practicalRow.style.display = 'grid';
+        internalInput.required = true;
+        finalInput.required = true;
+        practicalMaxSolo.required = false;
+        practicalAssessment.required = false;
+        practicalMax.required = true;
+        practicalMarks.required = true;
       }
+      calculateGrades();
     });
 
     // Update practical marks max
-    practicalMax.addEventListener('change', (e) => {
-      practicalMarks.max = e.target.value;
-      practicalMarks.placeholder = `Max ${e.target.value}`;
-    });
+    if (practicalMaxSolo) {
+      practicalMaxSolo.addEventListener('change', (e) => {
+        practicalAssessment.max = e.target.value;
+        practicalAssessment.placeholder = `Max ${e.target.value}`;
+      });
+    }
+
+    if (practicalMax) {
+      practicalMax.addEventListener('change', (e) => {
+        practicalMarks.max = e.target.value;
+        practicalMarks.placeholder = `Max ${e.target.value}`;
+      });
+    }
 
     // Auto-calculate on input change
     const inputs = card.querySelectorAll('input, select');
@@ -209,25 +282,78 @@ document.addEventListener('DOMContentLoaded', () => {
     cards.forEach(card => {
       const name = card.querySelector('.subject-name').value;
       const credit = parseFloat(card.querySelector('.credit-hours').value) || 0;
-      const internal = parseFloat(card.querySelector('.internal-marks').value) || 0;
-      const final = parseFloat(card.querySelector('.final-marks').value) || 0;
-      const hasPractical = card.querySelector('.has-practical').checked;
-      const practicalMax = hasPractical ? parseInt(card.querySelector('.practical-max').value, 10) || 0 : 0;
-      const practicalMarks = hasPractical ? parseFloat(card.querySelector('.practical-marks').value) || 0 : 0;
+      const subjectType = card.querySelector('.subject-type').value;
+      
+      if (!name || !credit) return;
 
-      if (name && credit) {
-        const theoryMarks = internal + final;
-        const totalMarks = theoryMarks + practicalMarks;
-        const maxMarks = 100 + practicalMax;
-        const percentage = (totalMarks / maxMarks) * 100;
+      let totalMarks, maxMarks, percentage;
+
+      if (subjectType === 'theory') {
+        // Theory only: Internal + Final (max 100)
+        const internal = parseFloat(card.querySelector('.internal-marks').value) || 0;
+        const final = parseFloat(card.querySelector('.final-marks').value) || 0;
+        totalMarks = internal + final;
+        maxMarks = 100;
+        percentage = (totalMarks / maxMarks) * 100;
+
         const gradeInfo = getGrade(percentage);
-
         subjectsData.push({
           name,
           credit,
+          subjectType,
           internal,
           final,
-          hasPractical,
+          practicalMarks: 0,
+          totalMarks,
+          maxMarks,
+          percentage,
+          grade: gradeInfo.letter,
+          point: gradeInfo.point
+        });
+
+      } else if (subjectType === 'practical') {
+        // Practical only: Assessment marks only
+        const practicalMax = parseInt(card.querySelector('.practical-max-solo').value, 10) || 0;
+        const practicalAssessment = parseFloat(card.querySelector('.practical-assessment').value) || 0;
+        totalMarks = practicalAssessment;
+        maxMarks = practicalMax;
+        percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
+
+        const gradeInfo = getGrade(percentage);
+        subjectsData.push({
+          name,
+          credit,
+          subjectType,
+          internal: 0,
+          final: 0,
+          practicalMax,
+          practicalMarks: practicalAssessment,
+          totalMarks,
+          maxMarks,
+          percentage,
+          grade: gradeInfo.letter,
+          point: gradeInfo.point
+        });
+
+      } else { // theory_with_practical
+        // Theory + Practical combined in one subject
+        const internal = parseFloat(card.querySelector('.internal-marks').value) || 0;
+        const final = parseFloat(card.querySelector('.final-marks').value) || 0;
+        const practicalMax = parseInt(card.querySelector('.practical-max').value, 10) || 0;
+        const practicalMarks = parseFloat(card.querySelector('.practical-marks').value) || 0;
+        
+        const theoryMarks = internal + final;
+        totalMarks = theoryMarks + practicalMarks;
+        maxMarks = 100 + practicalMax;
+        percentage = (totalMarks / maxMarks) * 100;
+
+        const gradeInfo = getGrade(percentage);
+        subjectsData.push({
+          name,
+          credit,
+          subjectType,
+          internal,
+          final,
           practicalMax,
           practicalMarks,
           totalMarks,
@@ -280,13 +406,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     subjects.forEach(sub => {
       const row = document.createElement('tr');
-      const practicalDisplay = sub.hasPractical ? `${sub.practicalMarks}/${sub.practicalMax}` : '-';
+      
+      let internalDisplay, finalDisplay, practicalDisplay;
+      
+      if (sub.subjectType === 'theory') {
+        internalDisplay = sub.internal;
+        finalDisplay = sub.final;
+        practicalDisplay = '-';
+      } else if (sub.subjectType === 'practical') {
+        internalDisplay = '-';
+        finalDisplay = '-';
+        practicalDisplay = `${sub.practicalMarks}/${sub.maxMarks}`;
+      } else { // theory_with_practical
+        internalDisplay = sub.internal;
+        finalDisplay = sub.final;
+        practicalDisplay = `${sub.practicalMarks}/${sub.practicalMax}`;
+      }
       
       row.innerHTML = `
         <td>${sub.name}</td>
         <td>${sub.credit}</td>
-        <td>${sub.internal}</td>
-        <td>${sub.final}</td>
+        <td>${internalDisplay}</td>
+        <td>${finalDisplay}</td>
         <td>${practicalDisplay}</td>
         <td>${sub.totalMarks}/${sub.maxMarks}</td>
         <td><span class="grade-badge grade-${sub.grade.replace('+', '')}">${sub.grade}</span></td>
@@ -305,20 +446,35 @@ document.addEventListener('DOMContentLoaded', () => {
     cards.forEach(card => {
       const name = card.querySelector('.subject-name').value;
       const credit = card.querySelector('.credit-hours').value;
+      const subjectType = card.querySelector('.subject-type').value;
       const internal = card.querySelector('.internal-marks').value;
       const final = card.querySelector('.final-marks').value;
-      const hasPractical = card.querySelector('.has-practical').checked;
-      const practicalMax = card.querySelector('.practical-max').value;
-      const practicalMarks = card.querySelector('.practical-marks').value;
+      
+      let practicalMax, practicalMarks, practicalAssessment;
+      
+      if (subjectType === 'practical') {
+        practicalMax = card.querySelector('.practical-max-solo').value;
+        practicalAssessment = card.querySelector('.practical-assessment').value;
+        practicalMarks = null;
+      } else if (subjectType === 'theory_with_practical') {
+        practicalMax = card.querySelector('.practical-max').value;
+        practicalMarks = card.querySelector('.practical-marks').value;
+        practicalAssessment = null;
+      } else {
+        practicalMax = null;
+        practicalMarks = null;
+        practicalAssessment = null;
+      }
 
       cardsData.push({
         name,
         credit,
+        subjectType,
         internal,
         final,
-        hasPractical,
         practicalMax: parseInt(practicalMax, 10) || 0,
-        practicalMarks
+        practicalMarks,
+        practicalAssessment
       });
     });
 
